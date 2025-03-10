@@ -1,107 +1,95 @@
 import os
 import json
-from typing import TextIO
-
-# variables
-user_booking = 0
-double_check = "y"
-
-# dictionary data
-FILE_NAME = "seats.json"
 
 
+# Dictionary data
+FILE_NAMES = {
+    "1": "trip1_seats.json",
+    "2": "trip2_seats.json",
+    "3": "trip3_seats.json"
+}
 
-# Save seat data to file
-def save_seat_data(trip):
-    with open(FILE_NAME, "w", encoding="utf-8") as file:  # type: TextIO
+# Allows for dynamic saving of data to relevant trip json
+def save_seat_data(trip, trip_num):
+    file_name = FILE_NAMES[trip_num]
+    with open(file_name, "w", encoding="utf-8") as file:
         json.dump(trip, file, indent=4)
-    print(f"Changes saved to {FILE_NAME}")
+    print(f"Changes saved to {file_name}")
 
+# Creates the required json files
+def load_seat_data(trip_num):
+    file_name = FILE_NAMES[trip_num]
+    if os.path.exists(file_name):
+        if os.stat(file_name).st_size == 0:
+            print("Warning: JSON file is empty. Creating default seats.")
+            return {"seats": ["available"] * 16, "num_seats": 16}
+        try:
+            with open(file_name, "r", encoding="utf-8") as file:
+                return json.load(file)
+        except json.JSONDecodeError:
+            print("Error: JSON file is corrupted. Resetting to default.")
+    return {"seats": ["available"] * 16, "num_seats": 16}  # Default
 
-# Ensure seats.json exists
-def ensure_seat_file():
-    if not os.path.exists(FILE_NAME):
-        with open(FILE_NAME, "w", encoding="utf-8") as file:
-            json.dump({"seats": ["available"] * 16, "num_seats": 16}, file, indent=4)
-        print(f"Created {FILE_NAME}")
-
-# Loads / creates data dictionary
-def load_seat_data():
-    if os.path.exists(FILE_NAME):
-        with open(FILE_NAME, "r") as file:
-            return json.load(file)  # Load data from file
-    else:
-        return {"seats": ["available"] * 16, "num_seats": 16}  # Default
-
-# Load seat data into trip info
-
-trip_info = load_seat_data()
-
+# Count available seats
 def available_seats(trip):
+    return sum(1 for seat in trip["seats"] if seat.lower() == "available")
 
-    seats = trip["seats"]  # A list of seat statuses ("available" or "occupied")
-    num_seats = trip["num_seats"]  # Total number of seats
-    assert len(seats) == num_seats, f"Expected {num_seats} seats, but got {len(seats)}"
+# Assess user intent
+user_goal = input("Would you like to book a trip? Y/N: ").strip().lower()
 
-    # count seats available
-    count = sum(1 for seat in seats if seat.lower() == "available")
+if user_goal == "y":
+    user_trip = input("What trip would you like to book? 1, 2, 3? ").strip()
 
-    return count
+    if user_trip in FILE_NAMES:
+        trip_info = load_seat_data(user_trip)
 
-
-user_goal = input("would you like to book a trip? Y/N: ")  # judge the intent of user
-
-if user_goal in ["Y", "y"]:
-
-    while double_check in ["y", "Y"]:  # Outer loop to handle multiple attempts
-
-        print("We have:", available_seats(trip_info), "seats available")  # Inform user
-
-        while True:  # Inner loop to keep asking for a seat until confirmed
-            user_booking = input("What seat would you like? ")
+        while True:
+            print("We have:", available_seats(trip_info), "seats available")
 
             try:
-                user_booking = int(user_booking)
+                user_booking = int(input("What seat would you like? "))
 
+                # makes sure user input is a valid seat
                 if 1 <= user_booking <= 16:
-                    print(f"You would like to book seat {user_booking}?")
-                    double_check = input("Confirm (Y/N): ").strip().lower()
+                    seat_index = user_booking - 1
 
-                    if double_check == "y":
-                        double_check = "n"  # Force exit from outer loop
-                        seat_index = user_booking - 1
-
-                        if trip_info["seats"][seat_index] == "available":
-                            user_name = input("what is your name? ")
-                            trip_info["seats"][seat_index] = "occupied"
-                            print(f"Seat {user_booking} booked successfully!")
-                            save_seat_data(trip_info)
-                            break  # Exit inner loop
-
-                        else: print(f"Seat {user_booking} is unavailable. Please try again.")
-
+                    # if the seat is available assign that seat to the user
+                    if trip_info["seats"][seat_index] == "available":
+                        user_name = input("What is your name? ")
+                        trip_info["seats"][seat_index] = user_name
+                        print(f"Seat {user_booking} booked successfully!")
+                        save_seat_data(trip_info, user_trip)
                         break
 
-                    elif double_check == "n":
-                        print("Booking canceled. Choose another seat.")  # Loops back to seat selection
-
                     else:
-                        print("Invalid input. Please enter Y or N.")
+                        print(f"Seat {user_booking} is unavailable. Please try again.")
 
                 else:
+                    # revert if seat does not exist
                     print("Invalid seat! Choose a number between 1 and 16.")
 
             except ValueError:
+                # revert if user does not name a seat
                 print("Invalid input! Please enter a number.")
 
+# root out dull users
+elif user_goal == "n":
+    print("Then what the hell are you doing here?")
 
+# Allows the administrator to reset and print the data
+elif user_goal == "admin":
+    admin_intent = input("Do you want to reset or print seats? ").strip().lower()
+    admin_trip = input("Which trip? 1, 2, or 3? ").strip()
 
-elif user_goal in ["N", "n"]:
+    if admin_trip in FILE_NAMES:
+        trip_info = load_seat_data(admin_trip)
 
-    print("Then what the hell are you doing here?")  # roots out the idiots
+        # Reset data
+        if admin_intent == "reset":
+            trip_info["seats"] = ["available"] * trip_info["num_seats"]
+            save_seat_data(trip_info, admin_trip)
+            print("Seats Reset")
 
-# allows administrator reset
-elif user_goal in ["admin", "Admin"]:
-    trip_info["seats"] = ["available"] * trip_info["num_seats"]
-    save_seat_data(trip_info)  # Save the reset data
-    print("Seats Reset")
+        # Print data
+        elif admin_intent == "print":
+            print(trip_info)
