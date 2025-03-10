@@ -72,6 +72,7 @@ if user_goal in ["Y", "y"]:
                         seat_index = user_booking - 1
 
                         if trip_info["seats"][seat_index] == "available":
+                            user_name = input("what is your name? ")
                             trip_info["seats"][seat_index] = "occupied"
                             print(f"Seat {user_booking} booked successfully!")
                             save_seat_data(trip_info)

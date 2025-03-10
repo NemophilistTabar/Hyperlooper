@@ -1,21 +1,5 @@
 {
     "seats": [
-        "available",
-        "available",
-        "available",
-        "available",
-        "available",
-        "available",
-        "available",
-        "available",
-        "available",
-        "available",
-        "available",
-        "available",
-        "available",
-        "available",
-        "available",
-        "available"
-    ],
-    "num_seats": 16
-}
+        [
+            "occupied : 0",
+            
